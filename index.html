@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Singapore Postal Districts</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    #map { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .district-label {
+      font-size: 8px;
+      font-weight: 600;
+      fill: white;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    .legend text {
+      font-size: 12px;
+      fill: #333;
+    }
+  </style>
+</head>
+<body>
+  <svg id="map"></svg>
+  <script>
+    const width = 800;
+    const height = 700;
+
+    const regionColors = {
+      'Central': '#4CAF50',
+      'West': '#2196F3',
+      'North': '#F44336',
+      'North-East': '#FF9800',
+      'East': '#9C27B0'
+    };
+
+    const districtToRegion = {};
+    // Central: D01–04, 06–13, 20–21
+    ['01','02','03','04','06','07','08','09','10','11','12','13','20','21'].forEach(d => districtToRegion[d] = 'Central');
+    // West: D05, 22–24
+    ['05','22','23','24'].forEach(d => districtToRegion[d] = 'West');
+    // North: D25–27
+    ['25','26','27'].forEach(d => districtToRegion[d] = 'North');
+    // North-East: D19, 28
+    ['19','28'].forEach(d => districtToRegion[d] = 'North-East');
+    // East: D14–18
+    ['14','15','16','17','18'].forEach(d => districtToRegion[d] = 'East');
+
+    const svg = d3.select('#map')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('width', width)
+      .attr('height', height);
+
+    const g = svg.append('g');
+
+    const projection = d3.geoMercator()
+      .center([103.8, 1.35])
+      .scale(35000)
+      .translate([width / 2, height / 2]);
+
+    const path = d3.geoPath().projection(projection);
+
+    // Legend
+    const legend = svg.append('g')
+      .attr('class', 'legend')
+      .attr('transform', `translate(${width - 130}, ${height - 130})`);
+
+    legend.append('rect')
+      .attr('width', 120)
+      .attr('height', 110)
+      .attr('fill', '#fff')
+      .attr('stroke', '#ccc')
+      .attr('rx', 4);
+
+    const legendData = [
+      { region: 'Central', color: '#4CAF50' },
+      { region: 'West', color: '#2196F3' },
+      { region: 'North', color: '#F44336' },
+      { region: 'North-East', color: '#FF9800' },
+      { region: 'East', color: '#9C27B0' }
+    ];
+
+    legend.selectAll('rect.legend-color')
+      .data(legendData)
+      .enter()
+      .append('rect')
+      .attr('class', 'legend-color')
+      .attr('x', 10)
+      .attr('y', (d, i) => 15 + i * 18)
+      .attr('width', 14)
+      .attr('height', 14)
+      .attr('fill', d => d.color)
+      .attr('rx', 2);
+
+    legend.selectAll('text.legend-label')
+      .data(legendData)
+      .enter()
+      .append('text')
+      .attr('class', 'legend-label')
+      .attr('x', 30)
+      .attr('y', (d, i) => 15 + i * 18)
+      .attr('dy', '0.35em')
+      .text(d => d.region);
+
+    legend.append('text')
+      .attr('x', 60)
+      .attr('y', 8)
+      .attr('text-anchor', 'middle')
+      .attr('font-weight', '600')
+      .text('URA Region');
+
+    d3.json('https://raw.githubusercontent.com/yinshanyang/singapore/master/maps/0-districts.geojson')
+      .then(data => {
+        g.selectAll('path')
+          .data(data.features)
+          .enter()
+          .append('path')
+          .attr('d', path)
+          .attr('fill', d => {
+            const district = d.properties.district;
+            const region = districtToRegion[district];
+            return region ? regionColors[region] : '#ccc';
+          })
+          .attr('stroke', 'white')
+          .attr('stroke-width', 1);
+
+        g.selectAll('text')
+          .data(data.features)
+          .enter()
+          .append('text')
+          .attr('class', 'district-label')
+          .attr('transform', d => `translate(${path.centroid(d)})`)
+          .text(d => d.properties.district);
+      })
+      .catch(err => console.error('Failed to load GeoJSON:', err));
+  </script>
+</body>
+</html>
